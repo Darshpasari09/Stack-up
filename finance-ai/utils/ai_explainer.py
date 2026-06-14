@@ -4,16 +4,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(
-    api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-)
+# Retrieve API Key
+api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
-model = genai.GenerativeModel(
+if api_key:
+    genai.configure(api_key=api_key)
+
+MODELS_TO_TRY = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
     "gemini-3-flash-preview"
-)
+]
+
+def generate_content_with_fallback(prompt):
+    if not api_key:
+        raise ValueError("Gemini API key is not configured. Please add GOOGLE_API_KEY or GEMINI_API_KEY to your environment variables or Streamlit secrets.")
+    
+    last_error = None
+    for model_name in MODELS_TO_TRY:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                prompt,
+                request_options={"timeout": 10.0}
+            )
+            return response.text
+        except Exception as e:
+            last_error = e
+            # Log or continue to the next model fallback
+            continue
+            
+    # If all models failed, raise the last encountered exception
+    raise last_error if last_error else RuntimeError("Failed to generate content using all available models.")
+
 
 def explain(stock, risk, cagr):
-
     prompt = f"""
     Explain this stock in simple terms.
 
@@ -24,11 +49,10 @@ def explain(stock, risk, cagr):
     Give 4 concise bullet points.
     """
 
-    response = model.generate_content(
-        prompt
-    )
-
-    return response.text
+    try:
+        return generate_content_with_fallback(prompt)
+    except Exception as e:
+        return f"Error generating explanation: {e}"
 
 
 def explain_comparison(stocks_data):
@@ -52,11 +76,11 @@ def explain_comparison(stocks_data):
     Keep your response to exactly 3 sentences. Do not use markdown bullet points or bold text in the sentences, just write a continuous paragraph.
     """
 
-    response = model.generate_content(
-        prompt
-    )
-
-    return response.text.strip()
+    try:
+        res = generate_content_with_fallback(prompt)
+        return res.strip()
+    except Exception as e:
+        return f"Could not generate AI comparison insights: {e}"
 
 
 if __name__ == "__main__":
@@ -65,7 +89,7 @@ if __name__ == "__main__":
     try:
         print("\n--- Testing Single Explainer ---")
         test_explanation = explain("TCS.NS", "Low", 0.15)
-        print("Success! Response:")
+        print("Response:")
         print(test_explanation)
         
         print("\n--- Testing Comparison Explainer ---")
@@ -75,7 +99,7 @@ if __name__ == "__main__":
             {"symbol": "TSLA", "risk": "High", "cagr": 0.28}
         ]
         test_comp = explain_comparison(test_data)
-        print("Success! Response:")
+        print("Response:")
         print(test_comp)
     except Exception as e:
         print(f"Error during API call: {e}")
