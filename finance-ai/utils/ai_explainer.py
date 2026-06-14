@@ -4,11 +4,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Retrieve API Key
-api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+# Retrieve API Key (checking Streamlit secrets first, then environment variables)
+api_key = None
+try:
+    import streamlit as st
+    if "GOOGLE_API_KEY" in st.secrets:
+        api_key = st.secrets["GOOGLE_API_KEY"]
+    elif "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    pass
+
+if not api_key:
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 if api_key:
     genai.configure(api_key=api_key)
+
 
 MODELS_TO_TRY = [
     "gemini-2.0-flash",
