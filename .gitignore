@@ -1,0 +1,21 @@
+# Local environment variables
+.env
+.env.local
+.env.*.local
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache / builds
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Streamlit secrets (if used locally)
+.streamlit/secrets.toml
+.streamlit/config.toml
