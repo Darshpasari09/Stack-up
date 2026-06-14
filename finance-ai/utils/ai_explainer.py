@@ -4,33 +4,34 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Retrieve API Key (checking Streamlit secrets first, then environment variables)
-api_key = None
-try:
-    import streamlit as st
-    if "GOOGLE_API_KEY" in st.secrets:
-        api_key = st.secrets["GOOGLE_API_KEY"]
-    elif "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-except Exception:
-    pass
-
-if not api_key:
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-
-if api_key:
-    genai.configure(api_key=api_key)
-
-
 MODELS_TO_TRY = [
     "gemini-2.0-flash",
     "gemini-1.5-flash",
     "gemini-3-flash-preview"
 ]
 
+def get_api_key():
+    # Check Streamlit secrets dynamically first
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and st.secrets:
+            if "GOOGLE_API_KEY" in st.secrets:
+                return st.secrets["GOOGLE_API_KEY"]
+            if "GEMINI_API_KEY" in st.secrets:
+                return st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        pass
+    
+    # Fallback to environment variables
+    return os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
 def generate_content_with_fallback(prompt):
+    api_key = get_api_key()
     if not api_key:
         raise ValueError("Gemini API key is not configured. Please add GOOGLE_API_KEY or GEMINI_API_KEY to your environment variables or Streamlit secrets.")
+    
+    # Configure the client dynamically
+    genai.configure(api_key=api_key)
     
     last_error = None
     for model_name in MODELS_TO_TRY:
